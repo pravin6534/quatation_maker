@@ -36,53 +36,66 @@ def parse_with_gemini(prompt_text):
     model = genai.GenerativeModel('gemini-1.5-flash')
 
     gemini_prompt = f"""
-You are a smart AI assistant that extracts structured data from unstructured WhatsApp messages related to quotations.
+You are a smart AI assistant for quotation creation. Extract structured JSON from user messages.
 
-Your task is to read the user message and return a JSON response with the following structure:
+You must identify:
+- Customer Name
+- List of items with quantity, unit of measure, rate, and GST % (item-wise GST allowed)
 
+Return output in JSON like this:
 {{
   "customer": "Customer Name",
   "items": [
     {{
       "item": "Item Name",
-      "qty": Quantity (Integer),
-      "uom": "Unit of Measure (e.g., pcs, nos)",
-      "rate": Rate per unit (Integer),
-      "gst": GST percentage for this item (Integer)
+      "qty": Quantity (integer),
+      "uom": "UOM (e.g., pcs, nos)",
+      "rate": Rate per unit (integer),
+      "gst": GST percentage (integer)
     }},
     ...
   ]
 }}
 
-Examples of valid user messages:
-- "Customer: Mr. Sharma, Items: 2 pcs Fan @1500 gst 18%, 1 nos AC @35000 gst 28%"
-- "2 nos Fans @1500 gst 18%, 1 AC @35000 gst 28%, Customer: Golu"
-- "Please create a quotation for Mr. Ramesh. He wants 5 bulbs @100 gst 12% and 1 geyser @4000 gst 18%, all in nos."
-- "Items: 3 pcs Table @5000 gst 18%, Customer name is Raju"
+The user message can be in any order. Examples:
+- "2 nos fans @1500 gst 18%, 1 nos ac @35000 gst 28%, customer: Raju"
+- "Please prepare a quotation for Mr. Golu. He needs 5 bulbs @100 gst 12% and 1 geyser @4000 gst 18%"
+- "Customer is Aarti. Items: 2 pcs Tube Lights @450 gst 12%, 1 AC @42000 gst 28%"
 
-Now parse this message and extract all data into the required JSON format.
-
-User message:
+Now extract data from this message:
 \"\"\"{prompt_text}\"\"\"
 
-Only return valid JSON. Do not explain anything. No markdown. No comments. Just pure JSON.
+Respond with JSON only. No explanation. No markdown. No code blocks.
 """
 
     try:
         response = model.generate_content(gemini_prompt)
         text = response.text.strip()
-        
-        # Remove markdown wrapper if present
+
+        # Strip markdown or code fences if any
         if text.startswith("```json"):
-            text = text.lstrip("```json").rstrip("```").strip()
-        
+            text = text.replace("```json", "").replace("```", "").strip()
+
         parsed = json.loads(text)
-        print(parsed)
-        return parsed.get("customer"), parsed.get("items")
+
+        # Clean and format results
+        customer = parsed.get("customer", "").title()
+        items = []
+        for item in parsed.get("items", []):
+            items.append({
+                "item": item.get("item", "").title(),
+                "qty": int(item.get("qty", 0)),
+                "uom": item.get("uom", "").capitalize(),
+                "rate": int(item.get("rate", 0)),
+                "gst": int(item.get("gst", 0))
+            })
+
+        return customer, items
 
     except Exception as e:
         print("Gemini parsing error:", e)
         return None, []
+
     
 # === Send Message ===
 def send_message(user_phone, message):
