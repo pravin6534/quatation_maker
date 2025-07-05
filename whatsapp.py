@@ -34,26 +34,52 @@ SESSION_ID=os.getenv("SESSION_ID")
 # === Gemini Parser ===
 def parse_with_gemini(prompt_text):
     model = genai.GenerativeModel('gemini-1.5-flash')
+
     gemini_prompt = f"""
-You are a smart quotation parser. Parse the message and return structured JSON.
-Format:
+You are a smart AI assistant that extracts structured data from unstructured WhatsApp messages related to quotations.
+
+Your task is to read the user message and return a JSON response with the following structure:
+
 {{
   "customer": "Customer Name",
   "items": [
-    {{"item": "Fan", "qty": 2, "uom": "pcs", "rate": 1500, "gst": 18}},
-    {{"item": "AC", "qty": 1, "uom": "nos", "rate": 35000, "gst": 28}}
+    {{
+      "item": "Item Name",
+      "qty": Quantity (Integer),
+      "uom": "Unit of Measure (e.g., pcs, nos)",
+      "rate": Rate per unit (Integer),
+      "gst": GST percentage for this item (Integer)
+    }},
+    ...
   ]
 }}
 
-Message:
+Examples of valid user messages:
+- "Customer: Mr. Sharma, Items: 2 pcs Fan @1500 gst 18%, 1 nos AC @35000 gst 28%"
+- "2 nos Fans @1500 gst 18%, 1 AC @35000 gst 28%, Customer: Golu"
+- "Please create a quotation for Mr. Ramesh. He wants 5 bulbs @100 gst 12% and 1 geyser @4000 gst 18%, all in nos."
+- "Items: 3 pcs Table @5000 gst 18%, Customer name is Raju"
+
+Now parse this message and extract all data into the required JSON format.
+
+User message:
 \"\"\"{prompt_text}\"\"\"
+
+Only return valid JSON. Do not explain anything. No markdown. No comments. Just pure JSON.
 """
-    response = model.generate_content(gemini_prompt)
-    # print(response)
+
     try:
-        parsed = json.loads(response.text.strip('```json\n').strip())
-        # print(parsed)
-        return parsed.get('customer'), parsed.get('items')
+        response = model.generate_content(gemini_prompt)
+        text = response.text.strip()
+        
+        # Remove markdown wrapper if present
+        if text.startswith("```json"):
+            text = text.lstrip("```json").rstrip("```").strip()
+        
+        parsed = json.loads(text)
+        print(parsed)
+        return parsed.get("customer"), parsed.get("items")
+
     except Exception as e:
         print("Gemini parsing error:", e)
         return None, []
@@ -92,7 +118,7 @@ def send_file(chat_id, caption=""):
 
 # === Add to Sheet ===
 def add_quotation_to_sheet(sheet_id, quotation_data):
-    print("called add_quotation_to_sheet")
+    # print("called add_quotation_to_sheet")
     try:
         sheet = initialize_sheets_service()
 
@@ -139,7 +165,7 @@ def add_quotation_to_sheet(sheet_id, quotation_data):
 @bp.route("/webhook", methods=["POST"])
 def webhook():
     data = request.json
-    print(data)
+    # print(data)
     if data.get('event') != 'message':
         return jsonify({"status": "ignored"}), 200
 
@@ -150,11 +176,11 @@ def webhook():
     if not msg or not user:
         return '', 200
 
-    if msg.lower() == "/quotation":
+    if msg.lower() == "/qt":
         send_message(user, "🧾 Please send quotation details like this:\n\nCustomer: Mr. Sharma\nItems: 2 pcs Fans @1500 gst 18%, 1 nos AC @35000 gst 28%")
         return '', 200
 
-    if msg.lower().startswith("customer:"):
+    if msg.lower().startswith("create"):
         customer, items = parse_with_gemini(msg)
         if not items:
             send_message(user, "❌ Unable to parse. Try again with format:\nCustomer: Mr. Sharma\nItems: 2 pcs Fans @1500 gst 18%, 1 nos AC @35000 gst 28%")
@@ -172,7 +198,7 @@ def webhook():
             "status": "Sent",
             "phone": user
         }
-        print(quotation)
+        # print(quotation)
         add_quotation_to_sheet(SHEET_ID, quotation)
         send_file(user, qid)
 
