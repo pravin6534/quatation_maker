@@ -28,6 +28,8 @@ WAHA_API_KEY = os.getenv("WAHA_API_KEY")
 SHEET_ID = os.getenv("SHEET_ID")
 GID = os.getenv("GID")
 
+SESSION_ID=os.getenv("SESSION_ID")
+
 
 # === Gemini Parser ===
 def parse_with_gemini(prompt_text):
@@ -79,7 +81,7 @@ def send_file(chat_id, caption=""):
             "url": file_url
         },
         "caption": caption,
-        "session": "pravin"
+        "session": SESSION_ID
     }
     headers = {
         "accept": "application/json",
@@ -137,7 +139,7 @@ def add_quotation_to_sheet(sheet_id, quotation_data):
 @bp.route("/webhook", methods=["POST"])
 def webhook():
     data = request.json
-
+    print(data)
     if data.get('event') != 'message':
         return jsonify({"status": "ignored"}), 200
 
