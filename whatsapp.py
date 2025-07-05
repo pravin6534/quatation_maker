@@ -190,7 +190,7 @@ def webhook():
         return '', 200
 
     if msg.lower() == "/qt":
-        send_message(user, "🧾 Please send quotation details like this:\n\nCustomer: Mr. Sharma\nItems: 2 pcs Fans @1500 gst 18%, 1 nos AC @35000 gst 28%")
+        send_message(user, "🧾 Please send quotation details like this start with create:\n\nCustomer: Mr. Sharma\nItems: 2 pcs Fans @1500 gst 18%, 1 nos AC @35000 gst 28%")
         return '', 200
 
     if msg.lower().startswith("create"):
