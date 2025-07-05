@@ -7,5 +7,5 @@ app = Flask(__name__)
 app.register_blueprint(index)
 app.register_blueprint(whatsapp)
 
-if __name__ == '__main__':
-    app.run(port=5001)
+# if __name__ == '__main__':
+#     app.run(port=5001)
